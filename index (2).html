@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Analyse des pilotes</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 20px; }
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+th { background-color: #f4f4f4; }
+.old { color: red; }
+#message { margin-top: 20px; font-size: 1.1em; }
+button { padding: 10px 15px; font-size: 1em; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Analyse automatique des pilotes</h1>
+<div id="message">Vérification du serveur local...</div>
+
+<table id="driverTable" style="display:none;">
+  <thead>
+    <tr>
+      <th>Nom du périphérique</th>
+      <th>Fabricant</th>
+      <th>Version</th>
+      <th>Date</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+// URL du serveur local
+const serverUrl = "http://localhost:8080";
+const message = document.getElementById("message");
+const driverTable = document.getElementById("driverTable");
+const tbody = document.querySelector("#driverTable tbody");
+
+// Fonction pour afficher les pilotes
+async function loadDrivers() {
+    try {
+        const response = await fetch(serverUrl, { cache: "no-cache" });
+        if (!response.ok) throw new Error("Serveur non disponible");
+        const data = await response.json();
+
+        // Afficher le tableau
+        driverTable.style.display = "table";
+        tbody.innerHTML = "";
+        message.style.display = "none";
+
+        const now = new Date();
+        data.forEach(d => {
+            const tr = document.createElement("tr");
+            const dateCol = new Date(d.DriverDate);
+            const tdClass = dateCol && (now - dateCol)/(1000*60*60*24*365) > 2 ? "old" : "";
+            ["DeviceName","Manufacturer","DriverVersion","DriverDate"].forEach((key,i)=>{
+                const td = document.createElement("td");
+                td.textContent = d[key];
+                if(i===3) td.className = tdClass;
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        // Serveur non trouvé → proposer le téléchargement
+        driverTable.style.display = "none";
+        message.innerHTML = `
+            <p>Le serveur local n'est pas lancé.</p>
+            <p>Veuillez télécharger le script et double-cliquer dessus pour démarrer l'analyse :</p>
+            <a href="driver-server.ps1" download><button>Télécharger le script</button></a>
+        `;
+    }
+}
+
+// Vérification initiale et rafraîchissement toutes les 5 secondes
+loadDrivers();
+setInterval(loadDrivers, 5000);
+</script>
+</body>
+</html>
